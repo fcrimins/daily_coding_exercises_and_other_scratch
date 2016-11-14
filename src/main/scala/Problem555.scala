@@ -19,15 +19,26 @@ object Problem555 {
     logger.info("F_mks = " + F_mks)
     logger.info("SF_mks = " + F_mks.sum)
 
-    val S_10_10 = new S_pm(10e6.asInstanceOf[Int], 10e6.asInstanceOf[Int])
+    //val S_10_10 = new S_pm(10, 10)
+    val S_10_10 = new S_pm(10e6.toInt, 10e6.toInt)
     logger.info("S_10_10() = " + S_10_10())
   }
 }
 
 class M_mks(m: Int, k: Int, s: Int) {
-  def apply(n: Int): Int = n match {
+  def recursive_apply(n: Int): Int = n match {
     case n if n > m => n - s
     case n => this(this(n + k))
+  }
+
+  def apply(n: Int): Int = n match {
+    case n if n > m => n - s
+    case n => {
+      // the number of k's to add to n to get >m
+      val apply_n_plus_k = scala.math.ceil((m + 1 - n).toDouble / k) * k + n - s
+
+      this(apply_n_plus_k.toInt)
+    }
   }
 }
 
@@ -37,6 +48,7 @@ class S_pm(p: Int, m: Int) {
     for(s <- 1 to p) {
       for(k <- s+1 to p) {
         val M = new M_mks(m, k, s)
+        // F_{m,k,s} is the set of fixed points of M_{m,k,s}
         val SF_mks = (1 to m).filter(n => n == M(n)).sum
         r += SF_mks
       }
