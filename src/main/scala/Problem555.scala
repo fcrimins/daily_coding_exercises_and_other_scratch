@@ -23,9 +23,11 @@ object Problem555 {
     logger.info("F_mks=" + F_mks)
     logger.info("SF_mks=" + F_mks.sum)
 
-    val pm = 1e3.toInt
+    val pm = 1e6.toInt
     val S_10_10 = new S_pm(pm, pm)
-    logger.info("S_10_10()=" + S_10_10())
+    val cumsum = S_10_10()
+    logger.info("S_10_10()D=" + S_10_10.cumsumD)
+    logger.info("S_10_10()=" + cumsum)
   }
 }
 
@@ -86,10 +88,12 @@ class M_mks(m: Int, k: Int, s: Int) {
 class S_pm(p: Int, m: Int) {
   /*@transient lazy*/ val logger = LogManager.getLogger
 
+  var cumsumD: BigDecimal = 0
+
   def apply(): BigInt = {
     var cumsum: BigInt = 0
     for(s <- 1 to p) {
-      if (s % 457 == 0)
+      if (s % 100 == 0)
         logger.info("s=" + s + ", cumsum=" + cumsum)
       for(k <- s+1 to p) {
         //logger.info("k=" + k)
@@ -107,7 +111,8 @@ class S_pm(p: Int, m: Int) {
           val mmxx = scala.math.max(mmn, mmx)
 
           var SF_mks = 0
-          logger.info(s"$mmxx-$mmnn<$mx-$mn : ${mmxx - mmnn}<${mx - mn} : ${mmxx - mmnn - (mx - mn)}")
+          /*if (scala.math.abs(mmxx - mmnn - (mx - mn)) > 10)
+            logger.info(s"$mmxx-$mmnn<$mx-$mn : ${mmxx - mmnn}<${mx - mn} : ${mmxx - mmnn - (mx - mn)}")*/
           if (mmxx - mmnn < mx - mn)
             SF_mks = (mmnn to mmxx).filter(n => n == M(n)).sum
           else
@@ -132,6 +137,7 @@ class S_pm(p: Int, m: Int) {
           if (SF_mks != v2)
             logger.error(SF_mks + " != " + v2 + ", s=" + s + ", k=" + k)*/
           cumsum += SF_mks
+          cumsumD += SF_mks
         } catch {
           case e: Throwable => logger.error("s=" + s + ", k=" + k)
         }
