@@ -13,7 +13,9 @@ object Problem555 {
     val k = 11
     val s = 10
     val M_91 = new M_mks(m, k, s)
+    logger.info("M_mks(m: " + m + ", k: " + k + ", s: " + s + ") -- m - 2s + k = " + M_91.m2sk)
     for(n <- s to k + (k - s))
+    //for(n <- 1 to m)
       logger.info("M_91(" + n + ") = " + M_91(n) + " or " + M_91.nopreproc_apply(n) + " or " + M_91.recursive_apply(n))
 
     val F_mks = (1 to m).filter(n => n == M_91(n))
@@ -71,10 +73,10 @@ class S_pm(p: Int, m: Int) {
   /*@transient lazy*/ val logger = LogManager.getLogger
 
   def apply(): Int = {
-    var r: Int = 0
+    var cumsum: Int = 0
     for(s <- 1 to p) {
-      if (s % 457 == 0)
-        logger.info("s=" + s)
+      if (s % 4/*57*/ == 0)
+        logger.info("s=" + s + ", cumsum=" + cumsum)
       for(k <- s+1 to p) {
         //logger.info("k=" + k)
         try {
@@ -85,18 +87,18 @@ class S_pm(p: Int, m: Int) {
           // for values equal to one of the preprocessed values
           val mn = M.m2sk - (k - s)
           val mx = M.m2sk
-          val SF_mks = (mn to mx).filter(n => n == M(n)).sum
+          val SF_mks = (mn to scala.math.min(mx, m)).filter(n => n == M(n)).sum
           //val SF_mks = (1 to m).filter(n => n == M(n)).sum
 
           /*val v2 = (1 to m).filter(n => n == M.recursive_apply(n)).sum
           if (SF_mks != v2)
             logger.error(SF_mks + " != " + v2 + ", s=" + s + ", k=" + k)*/
-          r += SF_mks
+          cumsum += SF_mks
         } catch {
           case e: Throwable => logger.error("s=" + s + ", k=" + k)
         }
       }
     }
-    r
+    cumsum
   }
 }
