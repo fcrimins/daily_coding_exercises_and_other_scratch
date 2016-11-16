@@ -1,3 +1,4 @@
+import java.io._
 import org.apache.logging.log4j._
 
 /**
@@ -23,11 +24,15 @@ object Problem555 {
     logger.info("F_mks=" + F_mks)
     logger.info("SF_mks=" + F_mks.sum)
 
-    val pm = 1e6.toInt
-    val S_10_10 = new S_pm(pm, pm)
-    val cumsum = S_10_10()
-    logger.info("S_10_10()D=" + S_10_10.cumsumD)
-    logger.info("S_10_10()=" + cumsum)
+    logger.info("S_10_10()=" + new S_pm(10, 10)()) // 225
+    logger.info("S_1000_1000()=" + new S_pm(1000, 1000)()) // 208724467
+    logger.info("S_10000_10000()=" + new S_pm(10000, 10000)()) // 208541582207
+
+    /*val pm = 1e6.toInt
+    val S_1e_1e = new S_pm(pm, pm)
+    val cumsum = S_1e_1e()
+    logger.info("S_1e_1e()D=" + S_1e_1e.cumsumD)
+    logger.info("S_1e_1e()=" + cumsum)*/ // 1343978449270432 (wrong :(
   }
 }
 
@@ -91,58 +96,48 @@ class S_pm(p: Int, m: Int) {
   var cumsumD: BigDecimal = 0
 
   def apply(): BigInt = {
-    var cumsum: BigInt = 0
-    for(s <- 1 to p) {
-      if (s % 100 == 0)
-        logger.info("s=" + s + ", cumsum=" + cumsum)
-      for(k <- s+1 to p) {
+    val begin: BigInt = 0
+    val s_range = scala.collection.immutable.Range.BigInt(1, p+1, 1).toList
+    val cumsums = s_range.par.map { (s: BigInt) => {
+      if (s % 1000 == 0)
+        logger.info(s"_s=$s")//, cs=$cumsum, cumsumD=$cumsumD")
+      var cs: BigInt = 0
+      for(k <- s.toInt+1 to p) {
         //logger.info("k=" + k)
-        try {
-          val M = new M_mks(m, k, s)
+        val M = new M_mks(m, k, s.toInt)
 
-          // F_{m,k,s} is the set of fixed points of M_{m,k,s}
-          // no reason to iterate over the entire (1 to m) when we're only looking
-          // for values equal to one of the preprocessed values
-          val mn = M.min_val
-          val mx = scala.math.min(M.max_val, m)
-          val mmn = M(M.min_val)
-          val mmx = M(M.max_val)
-          val mmnn = scala.math.min(mmn, mmx)
-          val mmxx = scala.math.max(mmn, mmx)
+        var SF_mks: BigInt = 0
+        //val SF_mks = (1 to m).filter(n => n == M(n)).sum
 
-          var SF_mks = 0
-          /*if (scala.math.abs(mmxx - mmnn - (mx - mn)) > 10)
-            logger.info(s"$mmxx-$mmnn<$mx-$mn : ${mmxx - mmnn}<${mx - mn} : ${mmxx - mmnn - (mx - mn)}")*/
-          if (mmxx - mmnn < mx - mn)
-            SF_mks = (mmnn to mmxx).filter(n => n == M(n)).sum
-          else
-            SF_mks = (mn to mx).filter(n => n == M(n)).sum
+        // F_{m,k,s} is the set of fixed points of M_{m,k,s}
+        // no reason to iterate over the entire (1 to m) when we're only looking
+        // for values equal to one of the preprocessed values
+        val mn = M.min_val
+        val mx = scala.math.min(M.max_val, m)
+        val mmn = M(M.min_val)
+        val mmx = M(M.max_val)
+        val mmnn = scala.math.min(mmn, mmx)
+        val mmxx = scala.math.max(mmn, mmx)
 
-          //val SF_mks = (1 to m).filter(n => n == M(n)).sum
+        if (mmxx - mmnn < mx - mn)
+          SF_mks = (mmnn to mmxx).filter(n => n == M(n)).sum
+        else
+          SF_mks = (mn to mx).filter(n => n == M(n)).sum
 
-          /*val mmn = M(M.min_val)
-          val mmx = M(M.max_val)
-          logger.info(s"mmn=$mmn, mmx=$mmx")
-
-          /*val i_ = (M.max_val - M.argmin) % M.ks
-          val i = if (i_ < 0) i_ + M.ks else i_*/
-          val argmin = M.max_val - M(M.min_val) + M.min_val
-          //logger.info("mn=" + mn + " to mx=" + mx + ", min/max_val=" + M.min_val + "/" + M.max_val + ", M.argmin=" + M.argmin + ", argmin=" + argmin)
-          if (M(argmin) != M.min_val)
-            logger.error("error1")
-          if (argmin < M.min_val || argmin > M.max_val)
-            logger.error("error2")*/
-
-          /*val v2 = (1 to m).filter(n => n == M.recursive_apply(n)).sum
-          if (SF_mks != v2)
-            logger.error(SF_mks + " != " + v2 + ", s=" + s + ", k=" + k)*/
-          cumsum += SF_mks
-          cumsumD += SF_mks
-        } catch {
-          case e: Throwable => logger.error("s=" + s + ", k=" + k)
-        }
+        cs += SF_mks
       }
-    }
-    cumsum
+
+      if (p == 1e6)
+        logger.info(s"s=$s, cs=$cs")
+      cs
+    }}
+
+    val file = new File(s"cumsums_$p.tsv")
+    val bw = new BufferedWriter(new FileWriter(file))
+    s_range.zip(cumsums).foreach(t => bw.write(s"${t._1}\t${t._2}\n"))
+    bw.close()
+
+    cumsumD = cumsums.map(_.toDouble).sum
+    cumsums.sum
   }
 }
