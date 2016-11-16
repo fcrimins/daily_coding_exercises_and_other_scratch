@@ -1,5 +1,6 @@
 import java.io._
 import org.apache.logging.log4j._
+import scala.collection.immutable.Range
 
 /**
   * https://projecteuler.net/problem=555
@@ -28,11 +29,11 @@ object Problem555 {
     logger.info("S_1000_1000()=" + new S_pm(1000, 1000)()) // 208724467
     logger.info("S_10000_10000()=" + new S_pm(10000, 10000)()) // 208541582207
 
-    /*val pm = 1e6.toInt
+    val pm = 1e6.toInt
     val S_1e_1e = new S_pm(pm, pm)
     val cumsum = S_1e_1e()
     logger.info("S_1e_1e()D=" + S_1e_1e.cumsumD)
-    logger.info("S_1e_1e()=" + cumsum)*/ // 1343978449270432 (wrong :(
+    logger.info("S_1e_1e()=" + cumsum) // 1343978449270432 (wrong :(
   }
 }
 
@@ -97,35 +98,28 @@ class S_pm(p: Int, m: Int) {
 
   def apply(): BigInt = {
     val begin: BigInt = 0
-    val s_range = scala.collection.immutable.Range.BigInt(1, p+1, 1).toList
-    val cumsums = s_range.par.map { (s: BigInt) => {
+    val cumsums = Range.BigInt(1, p+1, 1).par.map { (s: BigInt) => {
       if (s % 1000 == 0)
         logger.info(s"_s=$s")//, cs=$cumsum, cumsumD=$cumsumD")
-      var cs: BigInt = 0
-      for(k <- s.toInt+1 to p) {
+      val cs: BigInt = (s.toInt+1 to p).map { k => {
         //logger.info("k=" + k)
         val M = new M_mks(m, k, s.toInt)
-
-        var SF_mks: BigInt = 0
-        //val SF_mks = (1 to m).filter(n => n == M(n)).sum
 
         // F_{m,k,s} is the set of fixed points of M_{m,k,s}
         // no reason to iterate over the entire (1 to m) when we're only looking
         // for values equal to one of the preprocessed values
-        val mn = M.min_val
-        val mx = scala.math.min(M.max_val, m)
-        val mmn = M(M.min_val)
-        val mmx = M(M.max_val)
-        val mmnn = scala.math.min(mmn, mmx)
-        val mmxx = scala.math.max(mmn, mmx)
+        //val SF_mks = (1 to m).filter(n => n == M(n)).sum
 
-        if (mmxx - mmnn < mx - mn)
-          SF_mks = (mmnn to mmxx).filter(n => n == M(n)).sum
-        else
-          SF_mks = (mn to mx).filter(n => n == M(n)).sum
+        // there are only 2 options: (1) M can be constant, e.g. 91, or (2) it can
+        // be equal to itself for every element over the [min,max] range
+        var SF_mks: BigInt = 0
+        if (M.min_val == M.max_val) // <- implies that both are <m
+          SF_mks = M.max_val
+        else if (M.min_val == M(M.min_val))
+          SF_mks = (M.min_val to M.max_val).sum
+        SF_mks
 
-        cs += SF_mks
-      }
+      }}.sum
 
       if (p == 1e6)
         logger.info(s"s=$s, cs=$cs")
@@ -134,7 +128,7 @@ class S_pm(p: Int, m: Int) {
 
     val file = new File(s"cumsums_$p.tsv")
     val bw = new BufferedWriter(new FileWriter(file))
-    s_range.zip(cumsums).foreach(t => bw.write(s"${t._1}\t${t._2}\n"))
+    (1 to p).zip(cumsums).foreach(t => bw.write(s"${t._1}\t${t._2}\n"))
     bw.close()
 
     cumsumD = cumsums.map(_.toDouble).sum
