@@ -1,6 +1,7 @@
 import java.io._
 import org.apache.logging.log4j._
 import scala.collection.immutable.Range
+import scala.collection.parallel._
 
 /**
   * https://projecteuler.net/problem=555
@@ -24,6 +25,9 @@ object Problem555 {
     val F_mks = (1 to m).filter(n => n == M_91(n))
     logger.info("F_mks=" + F_mks)
     logger.info("SF_mks=" + F_mks.sum)
+
+    // http://www.scala-lang.org/old/node/9604
+    //collection.parallel.ForkJoinTasks.defaultForkJoinPool.setParallelism(4)
 
     logger.info("S_10_10()=" + new S_pm(10, 10)()) // 225
     logger.info("S_1000_1000()=" + new S_pm(1000, 1000)()) // 208724467
@@ -97,10 +101,13 @@ class S_pm(p: Int, m: Int) {
   var cumsumD: BigDecimal = 0
 
   def apply(): BigInt = {
-    val begin: BigInt = 0
-    val cumsums = Range.BigInt(1, p+1, 1).par.map { (s: BigInt) => {
+
+    val s_range = Range.BigInt(1, p+1, 1).par
+    s_range.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(14))
+
+    val cumsums = s_range.map { (s: BigInt) => {
       if (s % 1000 == 0)
-        logger.info(s"_s=$s")//, cs=$cumsum, cumsumD=$cumsumD")
+        logger.info(s"_s=$s")
       val cs: BigInt = (s.toInt+1 to p).map { k => {
         //logger.info("k=" + k)
         val M = new M_mks(m, k, s.toInt)
