@@ -5,6 +5,7 @@ import org.apache.spark.sql.expressions.Aggregator
 
 /**
   * https://projecteuler.net/problem=557
+  * https://en.wikipedia.org/wiki/Menelaus'_theorem
   * Created by fred on 11/21/16.
   */
 object Problem557 {
@@ -20,7 +21,7 @@ object Problem557 {
     import spark.implicits._
 
     val min_n = 4
-    val max_n = 1e4.toInt // 10->12, 20->259, 1e2->20765, 1e3->8736041, 1e4->5015484425?
+    val max_n = 1e4.toInt // 10->12; 20->259; 1e2->20,765; 1e3->8,736,041; 1e4->5,015,484,425? 976,845,610? 706,348,781?
 
     // initial uncut triangle search range for n = a + b + c + d
     val ni = (min_n to max_n by num_drivers)
@@ -31,15 +32,27 @@ object Problem557 {
     val valid_quadruple = na.map { case (n, a) => {
       val e: BigInt = a * a
       val f = n + a
-      val t: Int = f / (e gcd f).toInt
+      val t: Long = f / (e gcd f).toLong // <- this is essential! prevents overflow
 
-      val sum_d = (t to n*a-2 by t).fold(0) { (s, d) => {
+      val foldinit: Long = 0
+      val sum_d: Long = (t to n-a-2 by t).fold(foldinit) { (s, d) => {
         val g = n - a - d // = c + b
-        // a^2*d / (n+a) = c*b
-        if (isSquare(g*g - 4*e.toInt*d/f)) s + n else s // (c+b)^2 - 4*c*b = (c-b)^2
+        // a^2*d / (n+a) = e*d/f = c*b
+
+        // given c+b and c*b confirm that (c-b)^2 is a perfect square
+        val sq = g*g - 4*e.toInt*d/f // (c+b)^2 - 4*c*b = (c-b)^2
+        val isSq = isSquare(sq)
+        val c_minus_b = Math.sqrt(sq).toInt
+        val c = (g + c_minus_b) / 2
+        val b = g - c
+        if (isSq) {
+          //if (a<=0 || b<=0 || c<=0 || d<=0) logger.error(f"n=$n, ($a, $b, $c, $d)")
+          logger.info(f"n=$n, ($a, $b, $c, $d)")
+          s + n
+        } else s
       }}
 
-      sum_d
+      sum_d.toInt
 /*
     // join n to x, y, and a
     val nx = n_range.flatMap(n => (2 to n-2).map((n, _))) // x = a + b
@@ -138,6 +151,7 @@ object Problem557 {
   }
 
   /**
+    * Returns true if n is a perfect square.
     * http://stackoverflow.com/questions/295579/fastest-way-to-determine-if-an-integers-square-root-is-an-integer
     */
   def isSquare(n: Long): Boolean = {
@@ -145,7 +159,7 @@ object Problem557 {
       false
     }
     else {
-      val tst: Long = (Math.sqrt(n) /*+ 0.5*/).toLong
+      val tst: Long = (Math.sqrt(n) + 0.5).toLong
       tst * tst == n
     }
   }
