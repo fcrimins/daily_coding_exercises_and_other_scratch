@@ -27,6 +27,20 @@ object Problem557 {
     val ns = (0 until num_drivers).flatMap(offset => ni.map(n => n + offset))
     val n_range: Dataset[Int] = spark.createDataset(ns.filter(_ <= max_n))
 
+    val na = n_range.flatMap(n => (1 to n-3).map((n, _)))
+    val valid_quadruple = na.map { case (n, a) => {
+      val e: BigInt = a * a
+      val f = n + a
+      val t: Int = f / (e gcd f).toInt
+
+      val sum_d = (t to n*a-2 by t).fold(0) { (s, d) => {
+        val g = n - a - d // = c + b
+        // a^2*d / (n+a) = c*b
+        if (isSquare(g*g - 4*e.toInt*d/f)) s + n else s // (c+b)^2 - 4*c*b = (c-b)^2
+      }}
+
+      sum_d
+/*
     // join n to x, y, and a
     val nx = n_range.flatMap(n => (2 to n-2).map((n, _))) // x = a + b
 //star
@@ -55,6 +69,7 @@ object Problem557 {
       /*val cs = (-a to n - x - 1 by p).filter(c => (c >= b) && (d(c) + c == n - x))
       cs.foreach { c => logger.info(s"n=$n numer=$numer denom=$denom g=$g p=$p  a=$a b=$b c=$c d=${d(c)}") }*/
       num_n * n
+*/
 /*
     val nxy = nx.flatMap { case (n, x) => (x to n-2).map((n, x, _)) } // y = a + c
     //val nxya = nxy.flatMap { case (n, x, y) => (1 to x-1).map((n, x, y, _)) }
