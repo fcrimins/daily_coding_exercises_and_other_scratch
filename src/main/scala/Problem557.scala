@@ -21,19 +21,22 @@ object Problem557 {
     import spark.implicits._
 
     val min_n = 4
-    val max_n = 1e4.toInt // 10->12; 20->259; 1e2->20,765; 1e3->8,736,041; 1e4->5,015,484,425? 976,845,610? 706,348,781?
+    val max_n = 1e4.toInt // 10->12; 20->259; 1e2->20,765; 1e3->8,736,041; 1e4->5,015,484,425 (overflow w/ method 2)
+                                                                        // 706,348,781? (overflow w/ method 1)
 
     // initial uncut triangle search range for n = a + b + c + d
     val ni = (min_n to max_n by num_drivers)
     val ns = (0 until num_drivers).flatMap(offset => ni.map(n => n + offset))
     val n_range: Dataset[Int] = spark.createDataset(ns.filter(_ <= max_n))
-
+/*
+    // method 1 (extremely fast, but cheated)
     val na = n_range.flatMap(n => (1 to n-3).map((n, _)))
     val valid_quadruple = na.map { case (n, a) => {
       val e: BigInt = a * a
       val f = n + a
-      val t: Long = f / (e gcd f).toLong // <- this is essential! prevents overflow
+      val t: Long = f / (e gcd f).toLong // <- essential for `t` to be a Long! prevents overflow
 
+      // compute sum over values of d
       val foldinit: Long = 0
       val sum_d: Long = (t to n-a-2 by t).fold(foldinit) { (s, d) => {
         val g = n - a - d // = c + b
@@ -53,7 +56,8 @@ object Problem557 {
       }}
 
       sum_d.toInt
-/*
+*/
+    // method 2 (really slow)
     // join n to x, y, and a
     val nx = n_range.flatMap(n => (2 to n-2).map((n, _))) // x = a + b
 //star
@@ -71,19 +75,22 @@ object Problem557 {
       // c=-a+p, c=-a+2p, ...)
       val p = denom / g
 
-      // this is where c+a gets divided by p
-      def d(c: Int): Int = numer.toInt * (c + a) / denom - b
+      // this is where c+a gets divided by p (and it's essential that it return a
+      // BigInt! or maybe a long would suffice, o/w overflow)
+      def d(c: Int): BigInt = numer * (c + a) / denom - b
 
       // number of n's at which c and d are integers (it's possible that the first
       // couple c's are non-positive)
-      val num_n = (-a to n - x - 1 by p).count(c => (c >= b) && (d(c) + c == n - x))
+      val num_n: Long = (-a to n - x - 1 by p).count(c => (c >= b) && (d(c) + c == n - x))
       //if (num_n > 0) logger.info(s"n=$n numer=$numer denom=$denom g=$g p=$p a=$a b=$b cs=" + (-a to n - x - 1 by p).filter(c => (c >= b) && (d(c) + c == n - x)))
       if (num_n > 0) logger.info(s"n=$n numer=$numer denom=$denom g=$g p=$p a=$a b=$b num_n=$num_n")
       /*val cs = (-a to n - x - 1 by p).filter(c => (c >= b) && (d(c) + c == n - x))
       cs.foreach { c => logger.info(s"n=$n numer=$numer denom=$denom g=$g p=$p  a=$a b=$b c=$c d=${d(c)}") }*/
-      num_n * n
-*/
+      val prod: Long = num_n * n
+      prod
+
 /*
+    // method 3 (really really slow)
     val nxy = nx.flatMap { case (n, x) => (x to n-2).map((n, x, _)) } // y = a + c
     //val nxya = nxy.flatMap { case (n, x, y) => (1 to x-1).map((n, x, y, _)) }
 
@@ -124,9 +131,9 @@ object Problem557 {
     //valid_quadruple.repartition(32) // 1e3 -> 11:22/16threads
 
     // https://docs.cloud.databricks.com/docs/spark/1.6/examples/Dataset%20Aggregator.html
-    val bigIntSum = new Aggregator[Int, Long, Long] with Serializable {
+    val bigIntSum = new Aggregator[Long, Long, Long] with Serializable {
       def zero: Long = 0                     // The initial value.
-      def reduce(b: Long, a: Int) = b + a    // Add an element to the running total
+      def reduce(b: Long, a: Long) = b + a    // Add an element to the running total
       def merge(b1: Long, b2: Long) = b1 + b2 // Merge intermediate values.
       def finish(b: Long) = b
 
