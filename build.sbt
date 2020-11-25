@@ -1,7 +1,7 @@
 // http://xerial.org/blog/2014/03/24/sbt/
 // https://www.jetbrains.com/help/idea/2016.2/getting-started-with-sbt.html
 
-name := "projecteuler_scala"
+name := "daily_coding_exercises_and_other_scratch"
 
 version := "1.0"
 
