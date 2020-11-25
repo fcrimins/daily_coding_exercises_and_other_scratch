@@ -1,0 +1,8 @@
+PythonDataScienceHandbook
+scientific-python-lectures
+TensorFlow-Examples
+.ipynb_checkpoints/
+data/movielens-1m/
+data/movielens-10m/
+data/docs/
+logs/
